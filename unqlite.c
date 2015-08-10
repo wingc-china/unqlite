@@ -39592,6 +39592,15 @@ static jx9_int64 WinVfs_FileCtime(const char *zPath)
 static int WinVfs_Stat(const char *zPath, jx9_value *pArray, jx9_value *pWorker)
 {
     // TODO
+    //
+    // Here are what we need from the nonexist BY_HANDLE_FILE_INFORMATION from WP SDK to get this function implemented:
+    //  BY_HANDLE_FILE_INFORMATION::dwVolumeSerialNumber
+    //  BY_HANDLE_FILE_INFORMATION::nFileIndexHigh, BY_HANDLE_FILE_INFORMATION::nFileIndexLow
+    //  BY_HANDLE_FILE_INFORMATION::nNumberOfLinks
+    //  BY_HANDLE_FILE_INFORMATION::nFileSizeHigh, BY_HANDLE_FILE_INFORMATION::nFileSizeLow
+    //  BY_HANDLE_FILE_INFORMATION::ftLastAccessTime
+    //  BY_HANDLE_FILE_INFORMATION::ftLastWriteTime
+    //  BY_HANDLE_FILE_INFORMATION::ftCreationTime
     return JX9_OK;
 }
 #endif
@@ -40207,6 +40216,15 @@ static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 {
     // TODO
+    //
+    // Here are what we need from the nonexist BY_HANDLE_FILE_INFORMATION from WP SDK to get this function implemented:
+    //  BY_HANDLE_FILE_INFORMATION::dwVolumeSerialNumber
+    //  BY_HANDLE_FILE_INFORMATION::nFileIndexHigh, BY_HANDLE_FILE_INFORMATION::nFileIndexLow
+    //  BY_HANDLE_FILE_INFORMATION::nNumberOfLinks
+    //  BY_HANDLE_FILE_INFORMATION::nFileSizeHigh, BY_HANDLE_FILE_INFORMATION::nFileSizeLow
+    //  BY_HANDLE_FILE_INFORMATION::ftLastAccessTime
+    //  BY_HANDLE_FILE_INFORMATION::ftLastWriteTime
+    //  BY_HANDLE_FILE_INFORMATION::ftCreationTime
     return JX9_OK;
 }
 #endif
