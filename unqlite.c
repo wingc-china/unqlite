@@ -39355,6 +39355,7 @@ static int WinVfs_Touch(const char *zPath, jx9_int64 touch_time, jx9_int64 acces
 	HeapFree(GetProcessHeap(), 0, pConverted);
 	return rc ? JX9_OK : -1;
 }
+#ifndef WINAPI_FAMILY_PHONE_APP
 /* jx9_int64 (*xFileAtime)(const char *) */
 static jx9_int64 WinVfs_FileAtime(const char *zPath)
 {
@@ -39386,117 +39387,214 @@ static jx9_int64 WinVfs_FileAtime(const char *zPath)
 /* jx9_int64 (*xFileMtime)(const char *) */
 static jx9_int64 WinVfs_FileMtime(const char *zPath)
 {
-	BY_HANDLE_FILE_INFORMATION sInfo;
-	void * pConverted;
-	jx9_int64 mtime;
-	HANDLE pHandle;
-	pConverted = jx9convertUtf8Filename(zPath);
-	if( pConverted == 0 ){
-		return -1;
-	}
-	/* Open the file in read-only mode */
-	pHandle = OpenReadOnly((LPCWSTR)pConverted);
-	if( pHandle ){
-		BOOL rc;
-		rc = GetFileInformationByHandle(pHandle, &sInfo);
-		if( rc ){
-			mtime = convertWindowsTimeToUnixTime(&sInfo.ftLastWriteTime);
-		}else{
-			mtime = -1;
-		}
-		CloseHandle(pHandle);
-	}else{
-		mtime = -1;
-	}
-	HeapFree(GetProcessHeap(), 0, pConverted);
-	return mtime;
+    BY_HANDLE_FILE_INFORMATION sInfo;
+    void * pConverted;
+    jx9_int64 mtime;
+    HANDLE pHandle;
+    pConverted = jx9convertUtf8Filename(zPath);
+    if (pConverted == 0){
+        return -1;
+    }
+    /* Open the file in read-only mode */
+    pHandle = OpenReadOnly((LPCWSTR)pConverted);
+    if (pHandle){
+        BOOL rc;
+        rc = GetFileInformationByHandle(pHandle, &sInfo);
+        if (rc){
+            mtime = convertWindowsTimeToUnixTime(&sInfo.ftLastWriteTime);
+        }
+        else{
+            mtime = -1;
+        }
+        CloseHandle(pHandle);
+    }
+    else{
+        mtime = -1;
+    }
+    HeapFree(GetProcessHeap(), 0, pConverted);
+    return mtime;
 }
 /* jx9_int64 (*xFileCtime)(const char *) */
 static jx9_int64 WinVfs_FileCtime(const char *zPath)
 {
-	BY_HANDLE_FILE_INFORMATION sInfo;
-	void * pConverted;
-	jx9_int64 ctime;
-	HANDLE pHandle;
-	pConverted = jx9convertUtf8Filename(zPath);
-	if( pConverted == 0 ){
-		return -1;
-	}
-	/* Open the file in read-only mode */
-	pHandle = OpenReadOnly((LPCWSTR)pConverted);
-	if( pHandle ){
-		BOOL rc;
-		rc = GetFileInformationByHandle(pHandle, &sInfo);
-		if( rc ){
-			ctime = convertWindowsTimeToUnixTime(&sInfo.ftCreationTime);
-		}else{
-			ctime = -1;
-		}
-		CloseHandle(pHandle);
-	}else{
-		ctime = -1;
-	}
-	HeapFree(GetProcessHeap(), 0, pConverted);
-	return ctime;
+    BY_HANDLE_FILE_INFORMATION sInfo;
+    void * pConverted;
+    jx9_int64 ctime;
+    HANDLE pHandle;
+    pConverted = jx9convertUtf8Filename(zPath);
+    if (pConverted == 0){
+        return -1;
+    }
+    /* Open the file in read-only mode */
+    pHandle = OpenReadOnly((LPCWSTR)pConverted);
+    if (pHandle){
+        BOOL rc;
+        rc = GetFileInformationByHandle(pHandle, &sInfo);
+        if (rc){
+            ctime = convertWindowsTimeToUnixTime(&sInfo.ftCreationTime);
+        }
+        else{
+            ctime = -1;
+        }
+        CloseHandle(pHandle);
+    }
+    else{
+        ctime = -1;
+    }
+    HeapFree(GetProcessHeap(), 0, pConverted);
+    return ctime;
 }
 /* int (*xStat)(const char *, jx9_value *, jx9_value *) */
 /* int (*xlStat)(const char *, jx9_value *, jx9_value *) */
 static int WinVfs_Stat(const char *zPath, jx9_value *pArray, jx9_value *pWorker)
 {
-	BY_HANDLE_FILE_INFORMATION sInfo;
-	void *pConverted;
-	HANDLE pHandle;
-	BOOL rc;
-	pConverted = jx9convertUtf8Filename(zPath);
-	if( pConverted == 0 ){
-		return -1;
-	}
-	/* Open the file in read-only mode */
-	pHandle = OpenReadOnly((LPCWSTR)pConverted);
-	HeapFree(GetProcessHeap(), 0, pConverted);
-	if( pHandle == 0 ){
-		return -1;
-	}
-	rc = GetFileInformationByHandle(pHandle, &sInfo);
-	CloseHandle(pHandle);
-	if( !rc ){
-		return -1;
-	}
-	/* dev */
-	jx9_value_int64(pWorker, (jx9_int64)sInfo.dwVolumeSerialNumber);
-	jx9_array_add_strkey_elem(pArray, "dev", pWorker); /* Will make it's own copy */
-	/* ino */
-	jx9_value_int64(pWorker, (jx9_int64)(((jx9_int64)sInfo.nFileIndexHigh << 32) | sInfo.nFileIndexLow));
-	jx9_array_add_strkey_elem(pArray, "ino", pWorker); /* Will make it's own copy */
-	/* mode */
-	jx9_value_int(pWorker, 0);
-	jx9_array_add_strkey_elem(pArray, "mode", pWorker);
-	/* nlink */
-	jx9_value_int(pWorker, (int)sInfo.nNumberOfLinks);
-	jx9_array_add_strkey_elem(pArray, "nlink", pWorker); /* Will make it's own copy */
-	/* uid, gid, rdev */
-	jx9_value_int(pWorker, 0);
-	jx9_array_add_strkey_elem(pArray, "uid", pWorker);
-	jx9_array_add_strkey_elem(pArray, "gid", pWorker);
-	jx9_array_add_strkey_elem(pArray, "rdev", pWorker);
-	/* size */
-	jx9_value_int64(pWorker, (jx9_int64)(((jx9_int64)sInfo.nFileSizeHigh << 32) | sInfo.nFileSizeLow));
-	jx9_array_add_strkey_elem(pArray, "size", pWorker); /* Will make it's own copy */
-	/* atime */
-	jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftLastAccessTime));
-	jx9_array_add_strkey_elem(pArray, "atime", pWorker); /* Will make it's own copy */
-	/* mtime */
-	jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftLastWriteTime));
-	jx9_array_add_strkey_elem(pArray, "mtime", pWorker); /* Will make it's own copy */
-	/* ctime */
-	jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftCreationTime));
-	jx9_array_add_strkey_elem(pArray, "ctime", pWorker); /* Will make it's own copy */
-	/* blksize, blocks */
-	jx9_value_int(pWorker, 0);		
-	jx9_array_add_strkey_elem(pArray, "blksize", pWorker);
-	jx9_array_add_strkey_elem(pArray, "blocks", pWorker);
-	return JX9_OK;
+    BY_HANDLE_FILE_INFORMATION sInfo;
+    void *pConverted;
+    HANDLE pHandle;
+    BOOL rc;
+    pConverted = jx9convertUtf8Filename(zPath);
+    if (pConverted == 0){
+        return -1;
+    }
+    /* Open the file in read-only mode */
+    pHandle = OpenReadOnly((LPCWSTR)pConverted);
+    HeapFree(GetProcessHeap(), 0, pConverted);
+    if (pHandle == 0){
+        return -1;
+    }
+    rc = GetFileInformationByHandle(pHandle, &sInfo);
+    CloseHandle(pHandle);
+    if (!rc){
+        return -1;
+    }
+    /* dev */
+    jx9_value_int64(pWorker, (jx9_int64)sInfo.dwVolumeSerialNumber);
+    jx9_array_add_strkey_elem(pArray, "dev", pWorker); /* Will make it's own copy */
+    /* ino */
+    jx9_value_int64(pWorker, (jx9_int64)(((jx9_int64)sInfo.nFileIndexHigh << 32) | sInfo.nFileIndexLow));
+    jx9_array_add_strkey_elem(pArray, "ino", pWorker); /* Will make it's own copy */
+    /* mode */
+    jx9_value_int(pWorker, 0);
+    jx9_array_add_strkey_elem(pArray, "mode", pWorker);
+    /* nlink */
+    jx9_value_int(pWorker, (int)sInfo.nNumberOfLinks);
+    jx9_array_add_strkey_elem(pArray, "nlink", pWorker); /* Will make it's own copy */
+    /* uid, gid, rdev */
+    jx9_value_int(pWorker, 0);
+    jx9_array_add_strkey_elem(pArray, "uid", pWorker);
+    jx9_array_add_strkey_elem(pArray, "gid", pWorker);
+    jx9_array_add_strkey_elem(pArray, "rdev", pWorker);
+    /* size */
+    jx9_value_int64(pWorker, (jx9_int64)(((jx9_int64)sInfo.nFileSizeHigh << 32) | sInfo.nFileSizeLow));
+    jx9_array_add_strkey_elem(pArray, "size", pWorker); /* Will make it's own copy */
+    /* atime */
+    jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftLastAccessTime));
+    jx9_array_add_strkey_elem(pArray, "atime", pWorker); /* Will make it's own copy */
+    /* mtime */
+    jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftLastWriteTime));
+    jx9_array_add_strkey_elem(pArray, "mtime", pWorker); /* Will make it's own copy */
+    /* ctime */
+    jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&sInfo.ftCreationTime));
+    jx9_array_add_strkey_elem(pArray, "ctime", pWorker); /* Will make it's own copy */
+    /* blksize, blocks */
+    jx9_value_int(pWorker, 0);
+    jx9_array_add_strkey_elem(pArray, "blksize", pWorker);
+    jx9_array_add_strkey_elem(pArray, "blocks", pWorker);
+    return JX9_OK;
 }
+#else 
+/* jx9_int64 (*xFileAtime)(const char *) */
+static jx9_int64 WinVfs_FileAtime(const char *zPath)
+{
+    jx9_int64 atime;
+    HANDLE fileHandle;
+    FILETIME lastAccessTime;
+
+    atime = -1;
+
+    /* Open the file in read-only mode */
+    fileHandle = CreateFileA(zPath,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS,
+        0);
+
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+        if (GetFileTime(fileHandle, NULL, &lastAccessTime, NULL))
+        {
+            atime = convertWindowsTimeToUnixTime(&lastAccessTime);
+        }
+        CloseHandle(fileHandle);
+    }
+    return atime;
+};
+/* jx9_int64 (*xFileMtime)(const char *) */
+static jx9_int64 WinVfs_FileMtime(const char *zPath)
+{
+    jx9_int64 atime;
+    HANDLE fileHandle;
+    FILETIME lastWriteTime;
+
+    atime = -1;
+
+    /* Open the file in read-only mode */
+    fileHandle = CreateFileA(zPath,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS,
+        0);
+
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+        if (GetFileTime(fileHandle, NULL, NULL, &lastWriteTime))
+        {
+            atime = convertWindowsTimeToUnixTime(&lastWriteTime);
+        }
+        CloseHandle(fileHandle);
+    }
+    return atime;
+}
+/* jx9_int64 (*xFileCtime)(const char *) */
+static jx9_int64 WinVfs_FileCtime(const char *zPath)
+{
+    jx9_int64 atime;
+    HANDLE fileHandle;
+    FILETIME creationTime;
+
+    atime = -1;
+
+    /* Open the file in read-only mode */
+    fileHandle = CreateFileA(zPath,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS,
+        0);
+
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+        if (GetFileTime(fileHandle, &creationTime, NULL, NULL))
+        {
+            atime = convertWindowsTimeToUnixTime(&creationTime);
+        }
+        CloseHandle(fileHandle);
+    }
+    return atime;
+}
+/* int (*xStat)(const char *, jx9_value *, jx9_value *) */
+/* int (*xlStat)(const char *, jx9_value *, jx9_value *) */
+static int WinVfs_Stat(const char *zPath, jx9_value *pArray, jx9_value *pWorker)
+{
+    // TODO
+    return JX9_OK;
+}
+#endif
 /* int (*xIsfile)(const char *) */
 static int WinVfs_isfile(const char *zPath)
 {
@@ -40058,6 +40156,7 @@ static int WinFile_Sync(void *pUserData)
 	rc = FlushFileBuffers(pHandle);
 	return rc ? JX9_OK : - 1;
 }
+#ifndef WINAPI_FAMILY_PHONE_APP
 /* int (*xStat)(void *, jx9_value *, jx9_value *) */
 static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 {
@@ -40103,6 +40202,14 @@ static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 	jx9_array_add_strkey_elem(pArray, "blocks", pWorker);
 	return JX9_OK;
 }
+#else
+/* int (*xStat)(void *, jx9_value *, jx9_value *) */
+static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
+{
+    // TODO
+    return JX9_OK;
+}
+#endif
 /* Export the file:// stream */
 static const jx9_io_stream sWinFileStream = {
 	"file", /* Stream name */
@@ -55105,6 +55212,7 @@ static int winCurrentTime(unqlite_vfs *pVfs,Sytm *pOut)
 ** then it is not necessary to include the nul-terminator character
 ** in the output buffer.
 */
+#ifndef WINAPI_FAMILY_PHONE_APP
 static int winGetLastError(unqlite_vfs *pVfs, int nBuf, char *zBuf)
 {
   /* FormatMessage returns 0 on failure.  Otherwise it
@@ -55142,6 +55250,35 @@ static int winGetLastError(unqlite_vfs *pVfs, int nBuf, char *zBuf)
 	}
   return 0;
 }
+#else
+static int winGetLastError(unqlite_vfs *pVfs, int nBuf, char *zBuf)
+{
+    // NO FORMAT_MESSAGE_ALLOCATE_BUFFER on WP SDK, so we use 
+    // static buffer which is not thread safe.
+    DWORD error = GetLastError();
+    const static CHAR buffer[1024];
+    DWORD dwLen;
+
+    SXUNUSED(pVfs);
+    dwLen = FormatMessageA(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        0,
+        error,
+        0,
+        buffer,
+        0,
+        0);
+    if (dwLen > 0){
+        Systrcpy(zBuf, (sxu32)nBuf, buffer, 0 /* Compute input length automatically */);
+    }
+    else
+    {
+        Systrcpy(zBuf, (sxu32)nBuf, "OS Error", sizeof("OS Error") - 1);
+    }
+    return 0;
+}
+#endif
+
 /*
 ** Open a file.
 */
