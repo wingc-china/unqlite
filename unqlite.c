@@ -39591,17 +39591,82 @@ static jx9_int64 WinVfs_FileCtime(const char *zPath)
 /* int (*xlStat)(const char *, jx9_value *, jx9_value *) */
 static int WinVfs_Stat(const char *zPath, jx9_value *pArray, jx9_value *pWorker)
 {
-    // TODO
-    //
-    // Here are what we need from the nonexist BY_HANDLE_FILE_INFORMATION from WP SDK to get this function implemented:
-    //  BY_HANDLE_FILE_INFORMATION::dwVolumeSerialNumber
-    //  BY_HANDLE_FILE_INFORMATION::nFileIndexHigh, BY_HANDLE_FILE_INFORMATION::nFileIndexLow
-    //  BY_HANDLE_FILE_INFORMATION::nNumberOfLinks
-    //  BY_HANDLE_FILE_INFORMATION::nFileSizeHigh, BY_HANDLE_FILE_INFORMATION::nFileSizeLow
-    //  BY_HANDLE_FILE_INFORMATION::ftLastAccessTime
-    //  BY_HANDLE_FILE_INFORMATION::ftLastWriteTime
-    //  BY_HANDLE_FILE_INFORMATION::ftCreationTime
-    return JX9_OK;
+    int result;
+    HANDLE fileHandle;
+    WIN32_FILE_ATTRIBUTE_DATA fileAttributes;
+    FILE_STANDARD_INFO fileStandardInfo;
+    FILE_ID_INFO fileIdInfo;
+    jx9_int64 fileIndexValue;
+
+    result = SXERR_OS;
+    fileHandle = INVALID_HANDLE_VALUE;
+
+    /* Open the file in read-only mode */
+    fileHandle = CreateFileA(zPath,
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS,
+        0);
+
+    do
+    {
+        if (fileHandle == INVALID_HANDLE_VALUE) { break; }
+
+        /* dev */
+        if (GetFileInformationByHandleEx(fileHandle, FileIdInfo, &fileIdInfo, sizeof(fileIdInfo)) == 0) { break; }
+        jx9_value_int64(pWorker, (jx9_int64)fileIdInfo.VolumeSerialNumber);
+        jx9_array_add_strkey_elem(pArray, "dev", pWorker); /* Will make it's own copy */
+        /* ino */
+        /* The high 64-bit from the 128-bit fileIdInfo.FileId is all bytes reversed mapping to 
+           the (BY_HANDLE_FILE_INFORMATION::nFileIndexHigh << 32 | BY_HANDLE_FILE_INFORMATION::nFileIndexLow) */
+        fileIndexValue = 0;
+        for (int i = 0; i < sizeof(fileIdInfo.FileId) / 2; ++i)
+            fileIndexValue |= (jx9_int64)fileIdInfo.FileId.Identifier[i] << (i * 8);
+        jx9_value_int64(pWorker, fileIndexValue);
+        jx9_array_add_strkey_elem(pArray, "ino", pWorker); /* Will make it's own copy */
+        /* mode */
+        jx9_value_int(pWorker, 0);
+        jx9_array_add_strkey_elem(pArray, "mode", pWorker);
+
+        /* nlink */
+        if (GetFileInformationByHandleEx(fileHandle, FileStandardInfo, &fileStandardInfo, sizeof(fileStandardInfo)) == 0) { break; }
+        jx9_value_int(pWorker, (int)fileStandardInfo.NumberOfLinks);
+        jx9_array_add_strkey_elem(pArray, "nlink", pWorker); /* Will make it's own copy */
+        /* uid, gid, rdev */
+        jx9_value_int(pWorker, 0);
+        jx9_array_add_strkey_elem(pArray, "uid", pWorker);
+        jx9_array_add_strkey_elem(pArray, "gid", pWorker);
+        jx9_array_add_strkey_elem(pArray, "rdev", pWorker);
+
+        if (GetFileAttributesExA(zPath, GetFileExMaxInfoLevel, &fileAttributes) == 0) { break; }
+        /* size */
+        jx9_value_int64(pWorker, (jx9_int64)(((jx9_int64)fileAttributes.nFileSizeHigh << 32) | fileAttributes.nFileSizeLow));
+        jx9_array_add_strkey_elem(pArray, "size", pWorker); /* Will make it's own copy */
+        /* atime */
+        jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&fileAttributes.ftLastAccessTime));
+        jx9_array_add_strkey_elem(pArray, "atime", pWorker); /* Will make it's own copy */
+        /* mtime */
+        jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&fileAttributes.ftLastWriteTime));
+        jx9_array_add_strkey_elem(pArray, "mtime", pWorker); /* Will make it's own copy */
+        /* ctime */
+        jx9_value_int64(pWorker, convertWindowsTimeToUnixTime(&fileAttributes.ftCreationTime));
+        jx9_array_add_strkey_elem(pArray, "ctime", pWorker); /* Will make it's own copy */
+        /* blksize, blocks */
+        jx9_value_int(pWorker, 0);
+        jx9_array_add_strkey_elem(pArray, "blksize", pWorker);
+        jx9_array_add_strkey_elem(pArray, "blocks", pWorker);
+        /* Everything is good, sets the result to JX9_OK */
+        result = JX9_OK;
+    } while (FALSE);
+
+    /* Cleans up everything before exits */
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(fileHandle);
+    }
+    return result;
 }
 #endif
 /* int (*xIsfile)(const char *) */
@@ -40215,17 +40280,33 @@ static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 /* int (*xStat)(void *, jx9_value *, jx9_value *) */
 static int WinFile_Stat(void *pUserData, jx9_value *pArray, jx9_value *pWorker)
 {
-    // TODO
-    //
-    // Here are what we need from the nonexist BY_HANDLE_FILE_INFORMATION from WP SDK to get this function implemented:
-    //  BY_HANDLE_FILE_INFORMATION::dwVolumeSerialNumber
-    //  BY_HANDLE_FILE_INFORMATION::nFileIndexHigh, BY_HANDLE_FILE_INFORMATION::nFileIndexLow
-    //  BY_HANDLE_FILE_INFORMATION::nNumberOfLinks
-    //  BY_HANDLE_FILE_INFORMATION::nFileSizeHigh, BY_HANDLE_FILE_INFORMATION::nFileSizeLow
-    //  BY_HANDLE_FILE_INFORMATION::ftLastAccessTime
-    //  BY_HANDLE_FILE_INFORMATION::ftLastWriteTime
-    //  BY_HANDLE_FILE_INFORMATION::ftCreationTime
-    return JX9_OK;
+    int result;
+    HANDLE fileHandle;
+    FILE_NAME_INFO fileNameInfo;
+    CHAR * zFileName;
+
+    result = SXERR_OS;
+    fileHandle = (HANDLE)pUserData;
+    zFileName = NULL;
+
+    do
+    {
+        if (GetFileInformationByHandleEx(fileHandle, FileNameInfo, &fileNameInfo, sizeof(fileNameInfo)) == 0) { break; }
+        zFileName = (CHAR *)HeapAlloc(GetProcessHeap(), 0, fileNameInfo.FileNameLength);
+        if (zFileName == NULL)
+        {
+            result = SXERR_MEM;
+            break;
+        }
+        if (WideCharToMultiByte(CP_UTF8, 0, fileNameInfo.FileName, -1, zFileName, fileNameInfo.FileNameLength, 0, 0) == 0) { break; }
+        result = WinVfs_Stat(zFileName, pArray, pWorker);
+    } while (FALSE);
+    /* Cleans everything before exits*/
+    if (zFileName != NULL)
+    {
+        HeapFree(GetProcessHeap(), 0, zFileName);
+    }
+    return result;
 }
 #endif
 /* Export the file:// stream */
