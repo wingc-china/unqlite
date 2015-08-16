@@ -67,8 +67,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IntDir>$(ObjPath)\$(Configuration)\$(Platform)\$(ProjectName)\</IntDir>
-    <OutDir>$(BinPath)\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(ObjPath)\$(Configuration)\$(Platform)\app\$(ProjectName)\</IntDir>
+    <OutDir>$(BinPath)\$(Configuration)\$(Platform)\app\</OutDir>
     <TargetName>$(ProjectName)</TargetName>
     <TargetPath>$(OutDir)$(ProjectName)$(TargetExt)</TargetPath>
   </PropertyGroup>
@@ -129,7 +129,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="$(RootPath)\unique_handle.hxx" />
     <ClInclude Include="$(RootPath)\UnQLite.h" />
   </ItemGroup>
   <ItemGroup>
