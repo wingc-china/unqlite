@@ -129,10 +129,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="UnQLite.h" />
+    <ClInclude Include="$(RootPath)\unique_handle.hxx" />
+    <ClInclude Include="$(RootPath)\UnQLite.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="UnQLite.c" />
+    <ClCompile Include="$(RootPath)\UnQLite.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

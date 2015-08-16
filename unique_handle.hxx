@@ -7,20 +7,19 @@
 
 ///
 /// This is a template to accomplish auto resource release.
-/// When we use it we have to use a type and the type specific traits class
-/// which wraps the type's default invlaid value and the how to close it.
+/// When we use it we have to use a type and the type specific invalid value and resource release function.
 /// Most of this auto management concept and code are from Kenny Kerr's
 /// <C++ and the Windows API> http://msdn.microsoft.com/en-us/magazine/hh288076.aspx
+/// which wraps the type's default invlaid value and the how to close it. But this impl takes the invalid
+/// value and the release function as template parameter directly. It does not need to delcare a traits
+/// class.
 ///
-/// E.g. On Windows platform, we want to wrap file handle HANDLE and its closer
-/// CloseHandle() we just need to define
-/// struct HandleTraits
-/// {
-///     static HANDLE invalid() throw() { return INVALID_HANDLE_VALUE; };
-///     static void close(HANDLE value) throw() { ::CloseHandle(value); };
-/// }
+/// E.g. On Windows platform, we want to wrap file handle HANDLE and its closer CloseHandle() we just need
+///
+/// typedef unique_handle<HANDLE, decltype(::CloseHandle), INVALID_HANDLE_VALUE, ::CloseHandle> unique_file;
+///
 /// and then
-/// typedef unqiue_handle<HANDLE, HandleTraits> unique_file;
+///
 /// unique_file file;
 /// file = ::CreateFile2(...);
 ///
@@ -30,7 +29,10 @@
 //         and follow lower_underscore_cased naming.
 //      - The platform specific code like the unique_file definition is placed under Platform/Win32.
 
-template<typename T, typename Traits>
+template<typename _T,
+    typename _D,
+    _T _invalid,
+    _D _deleter>
 class unique_handle
 {
     // Copy constructor not allowed.
@@ -41,38 +43,33 @@ class unique_handle
     {
         if (is_valid())
         {
-            Traits::close(m_value);
-            m_value = Traits::invalid();
+            _deleter(m_value);
+            m_value = _invalid;
         }
     }
-    T m_value;
+    _T m_value;
+    _D m_deleter;
 public:
-    explicit unique_handle(T value = Traits::invalid()) throw() : m_value(value) {};
+    explicit unique_handle(_T value = _invalid, _D deleter = _deleter) throw() : m_value(value), m_deleter(_deleter) {};
     ~unique_handle() throw() { close(); };
-    bool is_valid() throw() { return (m_value != Traits::invalid()); };
-    bool reset(T value = Traits::invalid()) throw()
+    bool is_valid() throw() { return (m_value != _invalid); };
+    bool reset(_T value = _invalid) throw()
     {
-        if (is_valid())
-        {
-            close();
-        }
+        close();
         m_value = value;
         return is_valid();
     }
-    unique_handle& operator=(T value)
+    unique_handle& operator=(_T value)
     {
         reset(value);
         return *this;
     }
-    T get() const throw() { return m_value; }
-    T release() throw()
+    _T get() const throw() { return m_value; }
+    _T release() throw()
     {
-        T value = m_value;
-        m_value = Traits::invalid();
+        _T value = m_value;
+        m_value = _invalid;
         return value;
     }
-    T** address_of() throw()
-    {
-        return &m_value;
-    }
+    _T* address_of() throw() { return &m_value; }
 };
