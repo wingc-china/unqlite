@@ -5,6 +5,10 @@
 /// All rights reserved
 ///
 
+#pragma once
+
+#ifndef _UNIQUE_HANDLE_HXX
+#define _UNIQUE_HANDLE_HXX
 ///
 /// This is a template to accomplish auto resource release.
 /// When we use it we have to use a type and the type specific invalid value and resource release function.
@@ -73,3 +77,5 @@ public:
     }
     _T* address_of() throw() { return &m_value; }
 };
+
+#endif  // _UNIQUE_HANDLE_HXX

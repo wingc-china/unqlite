@@ -11,3 +11,7 @@
 #include "CppUnitTest.h"
 
 // TODO: reference additional headers your program requires here
+extern "C" {
+#include <UnQLite.h>
+}
+#include <unique_handle.hxx>
