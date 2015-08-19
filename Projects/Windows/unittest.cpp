@@ -12,7 +12,7 @@ typedef unique_handle<unqlite *, decltype(unqlite_close)*, nullptr, unqlite_clos
 
 namespace UnitTest
 {
-    TEST_CLASS(UnitTest)
+    TEST_CLASS(UnQLite)
     {
     public:
 
