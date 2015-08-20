@@ -4,6 +4,7 @@
 extern "C" {
 #include <UnQLite.h>
 }
+#include <memory>
 #include <unique_handle.hxx>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -18,7 +19,6 @@ namespace UnitTest
 
         TEST_METHOD(SimpleKeyValue)
         {
-            int rc = SXERR_UNKNOWN;
             unique_unqlite db;
 
             // Open our database;
@@ -66,6 +66,42 @@ namespace UnitTest
                 }
             }
             */
+        }
+
+        TEST_METHOD(Files)
+        {
+            const char* fileNames[] = { "UnitTest.lib", "UnQLite.lib" };  // Testing with the lib files themselves.
+            unqlite_int64 fileSize;
+            unique_unqlite db;
+            auto closer = [&fileSize](void * pMmapedFile) { unqlite_util_release_mmaped_file(pMmapedFile, fileSize); };
+            typedef std::unique_ptr<void, decltype(closer)> unique_mmaped_file; // TODO: Why cannot my unique_handle do this?
+
+            // Open our database;
+            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "test.db", UNQLITE_OPEN_CREATE));
+
+            for (const auto & fileName : fileNames)
+            {
+                void * pMmapedFile;
+                unique_mmaped_file mmapedFile(nullptr, closer);
+                // Obtain a read-only memory view of the target file;
+                Assert::AreEqual(UNQLITE_OK, unqlite_util_load_mmaped_file(fileName, &pMmapedFile, &fileSize));
+                mmapedFile.reset(pMmapedFile);
+                pMmapedFile = nullptr;
+                // Store the whole file in our database;
+                Assert::AreEqual(UNQLITE_OK, unqlite_kv_store(db.get(), fileName, -1, mmapedFile.get(), fileSize));
+            }
+        }
+
+        TEST_METHOD(Cursors)
+        {
+            // TODO
+            Assert::AreEqual(true, false);
+        }
+
+        TEST_METHOD(JX9Script)
+        {
+            // TODO
+            Assert::AreEqual(true, false);
         }
     };
 }
