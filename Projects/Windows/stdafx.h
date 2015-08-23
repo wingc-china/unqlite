@@ -11,6 +11,8 @@
 #include "CppUnitTest.h"
 
 // TODO: reference additional headers your program requires here
+#include <memory>
+#include <StrSafe.h>
 extern "C" {
 #include <UnQLite.h>
 }

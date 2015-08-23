@@ -1,10 +1,11 @@
 #include "stdafx.h"
 #include "CppUnitTest.h"
 
+#include <memory>
+#include <StrSafe.h>
 extern "C" {
 #include <UnQLite.h>
 }
-#include <memory>
 #include <unique_handle.hxx>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -16,13 +17,22 @@ namespace UnitTest
     TEST_CLASS(UnQLite)
     {
     public:
+        TEST_CLASS_INITIALIZE(ClassInitialize)
+        {
+            Logger::WriteMessage("In Test Class Initialize");
+        }
+
+        TEST_CLASS_CLEANUP(ClassCleanup)
+        {
+            Logger::WriteMessage("In Test Class Cleanup");
+        }
 
         TEST_METHOD(SimpleKeyValue)
         {
             unique_unqlite db;
 
             // Open our database;
-            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "test.db", UNQLITE_OPEN_CREATE));
+            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "key.value.test.db", UNQLITE_OPEN_CREATE));
             // Store some records
             Assert::AreEqual(UNQLITE_OK, unqlite_kv_store(db.get(), "test", -1, "Hello World", 11)); //test => 'Hello World'
             // A small formatted string
@@ -77,7 +87,7 @@ namespace UnitTest
             typedef std::unique_ptr<void, decltype(closer)> unique_mmaped_file; // TODO: Why cannot my unique_handle do this?
 
             // Open our database;
-            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "test.db", UNQLITE_OPEN_CREATE));
+            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "file.test.db", UNQLITE_OPEN_CREATE));
 
             for (const auto & fileName : fileNames)
             {
@@ -94,8 +104,54 @@ namespace UnitTest
 
         TEST_METHOD(Cursors)
         {
-            // TODO
-            Assert::AreEqual(true, false);
+            unique_unqlite db;
+            auto cursorCloser = [&db](unqlite_kv_cursor * pCursor) { unqlite_kv_cursor_release(db.get(), pCursor); };
+            typedef std::unique_ptr<unqlite_kv_cursor, decltype(cursorCloser)> unique_kv_cursor;
+            unqlite_kv_cursor *pCursor = nullptr;
+
+            // Open our database;
+            Assert::AreEqual(UNQLITE_OK, unqlite_open(db.address_of(), "cursor.test.db", UNQLITE_OPEN_CREATE));
+            // Store some records unqlite_kv_store(), unqlite_kv_append()...
+            Assert::AreEqual(UNQLITE_OK, unqlite_kv_store(db.get(), "test", -1, "Hello World", 11)); //test => 'Hello World'
+            //Switch to the append interface
+            Assert::AreEqual(UNQLITE_OK, unqlite_kv_append(db.get(), "msg", -1, "Hello, ", 7)); //msg => 'Hello, '
+            //The second chunk
+            Assert::AreEqual(UNQLITE_OK, unqlite_kv_append(db.get(), "msg", -1, "Current time is: ", 17)); //msg => 'Hello, Current time is: '
+
+            /* Allocate a new cursor instance */
+            Assert::AreEqual(UNQLITE_OK, unqlite_kv_cursor_init(db.get(), &pCursor));
+            unique_kv_cursor cursor(pCursor, cursorCloser);
+            pCursor = nullptr;
+            /* Point to the last record */
+            Assert::AreEqual(UNQLITE_OK, unqlite_kv_cursor_last_entry(cursor.get()));
+
+            /* Iterate over the records */
+            while (unqlite_kv_cursor_valid_entry(cursor.get()))
+            {
+                unqlite_int64 data = 0;
+                auto callback = [](const void * pData, unsigned int dataLen, void *) -> int {
+                    char buffer[_MAX_PATH];
+                    Assert::AreEqual(S_OK, ::StringCchPrintfA(buffer, _countof(buffer), "\tLength ==>\t%d", dataLen));
+                    Logger::WriteMessage(buffer);
+                    Assert::AreEqual(S_OK, ::StringCchPrintfA(buffer, _countof(buffer), "\tValue ==> \t%s", (char*)pData));
+                    Logger::WriteMessage(buffer);
+                    return UNQLITE_OK;
+                };
+                /* Consume the key */
+                Logger::WriteMessage("Key ==>");
+                Assert::AreEqual(UNQLITE_OK, unqlite_kv_cursor_key_callback(cursor.get(), callback, 0));
+                /* Extract data length */
+                Assert::AreEqual(UNQLITE_OK, unqlite_kv_cursor_data(cursor.get(), nullptr, &data));
+
+                wchar_t buffer[_MAX_PATH];
+                Assert::AreEqual(S_OK, ::StringCchPrintf(buffer, _countof(buffer), L"Data length ==>\t%lld", data));
+                Logger::WriteMessage(buffer);
+                /* Consume the data */
+                Logger::WriteMessage("Data ==>");
+                Assert::AreEqual(UNQLITE_OK, unqlite_kv_cursor_data_callback(cursor.get(), callback, 0));
+                /* Point to the previous record */
+                unqlite_kv_cursor_prev_entry(cursor.get());
+            }
         }
 
         TEST_METHOD(JX9Script)
